@@ -99,11 +99,9 @@ func main() {
 		// Analyze each field
 		for i, field := range fields {
 			fieldType := inferType(field)
-			if headers[i] == "age" {
-				fmt.Printf("DEBUG: value=%q, inferred_type=%s\n", field, postgresTypes[fieldType].Name)
-			}
 			if fieldType > columnTypes[i] {
 				columnTypes[i] = fieldType
+				fmt.Printf("DEBUG: field %s promoted to type %s\n", headers[i], postgresTypes[fieldType].Name)
 			}
 			possibleTypes[i] = intersectTypes(possibleTypes[i], typeCompatibility[postgresTypes[fieldType].Name])
 		}
