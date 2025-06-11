@@ -68,29 +68,36 @@ func main() {
 	}
 	defer file.Close()
 
-	// Read the file and analyze each column
+	headers, columnTypes, possibleTypes := analyzeFileTypes(file, *delimiter)
+
+	// Print results
+	fmt.Println("Column Analysis:")
+	for i, header := range headers {
+		fmt.Printf("%s: %s (possible types: %v)\n", header, postgresTypes[columnTypes[i]].Name, possibleTypes[i])
+	}
+}
+
+// analyzeFileTypes reads the file and analyzes the types of each column
+func analyzeFileTypes(file *os.File, delimiter string) ([]string, []int, [][]string) {
 	scanner := bufio.NewScanner(file)
 	var headers []string
 	var columnTypes []int
 	var possibleTypes [][]string
-	var columnValues [][]string
 
 	// Read headers if file is not empty
 	if scanner.Scan() {
-		headers = strings.Split(scanner.Text(), *delimiter)
+		headers = strings.Split(scanner.Text(), delimiter)
 		columnTypes = make([]int, len(headers))
 		possibleTypes = make([][]string, len(headers))
-		columnValues = make([][]string, len(headers))
 		for i := range columnTypes {
 			columnTypes[i] = 0 // Start with the most specific type (boolean)
 			possibleTypes[i] = []string{"boolean", "smallint", "integer", "bigint", "numeric", "timestamp", "date", "text"}
-			columnValues[i] = []string{}
 		}
 	}
 
 	// Process each line
 	for scanner.Scan() {
-		fields := strings.Split(scanner.Text(), *delimiter)
+		fields := strings.Split(scanner.Text(), delimiter)
 		if len(fields) != len(headers) {
 			fmt.Printf("Warning: Line has %d fields, expected %d\n", len(fields), len(headers))
 			continue
@@ -107,11 +114,7 @@ func main() {
 		}
 	}
 
-	// Print results
-	fmt.Println("Column Analysis:")
-	for i, header := range headers {
-		fmt.Printf("%s: %s (possible types: %v)\n", header, postgresTypes[columnTypes[i]].Name, possibleTypes[i])
-	}
+	return headers, columnTypes, possibleTypes
 }
 
 // intersectTypes returns the intersection of two type lists, maintaining order
