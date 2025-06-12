@@ -68,30 +68,27 @@ func main() {
 	}
 	defer file.Close()
 
-	headers, columnTypes, possibleTypes := analyzeFileTypes(file, *delimiter)
+	headers, columnTypes := analyzeFileTypes(file, *delimiter)
 
 	// Print results
 	fmt.Println("Column Analysis:")
 	for i, header := range headers {
-		fmt.Printf("%s: %s (possible types: %v)\n", header, postgresTypes[columnTypes[i]].Name, possibleTypes[i])
+		fmt.Printf("%s: %s\n", header, postgresTypes[columnTypes[i]].Name)
 	}
 }
 
 // analyzeFileTypes reads the file and analyzes the types of each column
-func analyzeFileTypes(file *os.File, delimiter string) ([]string, []int, [][]string) {
+func analyzeFileTypes(file *os.File, delimiter string) ([]string, []int) {
 	scanner := bufio.NewScanner(file)
 	var headers []string
 	var columnTypes []int
-	var possibleTypes [][]string
 
 	// Read headers if file is not empty
 	if scanner.Scan() {
 		headers = strings.Split(scanner.Text(), delimiter)
 		columnTypes = make([]int, len(headers))
-		possibleTypes = make([][]string, len(headers))
 		for i := range columnTypes {
 			columnTypes[i] = 0 // Start with the most specific type (boolean)
-			possibleTypes[i] = []string{"boolean", "smallint", "integer", "bigint", "numeric", "timestamp", "date", "text"}
 		}
 	}
 
@@ -110,26 +107,10 @@ func analyzeFileTypes(file *os.File, delimiter string) ([]string, []int, [][]str
 				columnTypes[i] = fieldType
 				fmt.Printf("DEBUG: field %s promoted to type %s\n", headers[i], postgresTypes[fieldType].Name)
 			}
-			possibleTypes[i] = intersectTypes(possibleTypes[i], typeCompatibility[postgresTypes[fieldType].Name])
 		}
 	}
 
-	return headers, columnTypes, possibleTypes
-}
-
-// intersectTypes returns the intersection of two type lists, maintaining order
-func intersectTypes(a, b []string) []string {
-	result := make([]string, 0)
-	bMap := make(map[string]bool)
-	for _, t := range b {
-		bMap[t] = true
-	}
-	for _, t := range a {
-		if bMap[t] {
-			result = append(result, t)
-		}
-	}
-	return result
+	return headers, columnTypes
 }
 
 func inferType(value string) int {
@@ -239,13 +220,3 @@ func isDate(value string) bool {
 	}
 	return false
 }
-
-// contains checks if a string is in a slice
-func contains(slice []string, str string) bool {
-	for _, s := range slice {
-		if s == str {
-			return true
-		}
-	}
-	return false
-} 

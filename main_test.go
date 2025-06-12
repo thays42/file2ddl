@@ -79,7 +79,7 @@ func TestTypeCompatibility(t *testing.T) {
 func TestFileAnalysis(t *testing.T) {
 	// Create a temporary file with test data
 	tmpFile := "testdata/sample.csv"
-	
+
 	// Test the file analysis
 	file, err := os.Open(tmpFile)
 	if err != nil {
@@ -88,13 +88,13 @@ func TestFileAnalysis(t *testing.T) {
 	defer file.Close()
 
 	// Analyze the file using the new function
-	headers, columnTypes, _ := analyzeFileTypes(file, ",")
+	headers, columnTypes := analyzeFileTypes(file, ",")
 
 	// Expected types for each column
 	expectedTypes := map[string]string{
 		"id":         "smallint",
 		"name":       "text",
-		"age":        "integer", 
+		"age":        "integer",
 		"is_active":  "boolean",
 		"salary":     "numeric",
 		"created_at": "timestamp",
@@ -110,4 +110,4 @@ func TestFileAnalysis(t *testing.T) {
 			t.Errorf("Column %s: got type %s, want %s", header, got, expected)
 		}
 	}
-} 
+}
