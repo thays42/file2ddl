@@ -79,12 +79,17 @@ func main() {
 	}
 	defer file.Close()
 
-	headers, columnTypes := analyzeFileTypes(file, delimChar, *quotes, analyzer)
+	headers, columnTypes, maxLengths := analyzeFileTypes(file, delimChar, *quotes, analyzer)
 
 	// Print results
 	fmt.Println("Column Analysis:")
 	for i, header := range headers {
-		fmt.Printf("%s: %s\n", header, analyzer.GetTypes()[columnTypes[i]].Name)
+		typeName := analyzer.GetTypes()[columnTypes[i]].Name
+		if typeName == "varchar" {
+			fmt.Printf("%s: varchar(%d)\n", header, maxLengths[i])
+		} else {
+			fmt.Printf("%s: %s\n", header, typeName)
+		}
 	}
 }
 
@@ -134,17 +139,20 @@ func splitFields(line, delim, quotes string) []string {
 }
 
 // analyzeFileTypes reads the file and analyzes the types of each column
-func analyzeFileTypes(file *os.File, delimiter, quotes string, analyzer dbtypes.TypeAnalyzer) ([]string, []int) {
+func analyzeFileTypes(file *os.File, delimiter, quotes string, analyzer dbtypes.TypeAnalyzer) ([]string, []int, []int) {
 	scanner := bufio.NewScanner(file)
 	var headers []string
 	var columnTypes []int
+	var maxLengths []int
 
 	// Read headers if file is not empty
 	if scanner.Scan() {
 		headers = splitFields(scanner.Text(), delimiter, quotes)
 		columnTypes = make([]int, len(headers))
+		maxLengths = make([]int, len(headers))
 		for i := range columnTypes {
 			columnTypes[i] = 0 // Start with the most specific type (boolean)
+			maxLengths[i] = 0
 		}
 	}
 
@@ -163,10 +171,15 @@ func analyzeFileTypes(file *os.File, delimiter, quotes string, analyzer dbtypes.
 				columnTypes[i] = fieldType
 				fmt.Printf("DEBUG: field %s promoted to type %s\n", headers[i], analyzer.GetTypes()[fieldType].Name)
 			}
+			if analyzer.GetTypes()[fieldType].Name == "varchar" {
+				if len(field) > maxLengths[i] {
+					maxLengths[i] = len(field)
+				}
+			}
 		}
 	}
 
-	return headers, columnTypes
+	return headers, columnTypes, maxLengths
 }
 
 func inferType(value string, analyzer dbtypes.TypeAnalyzer) int {

@@ -100,7 +100,7 @@ func TestFileAnalysis(t *testing.T) {
 	analyzer := &dbtypes.PostgreSQLAnalyzer{}
 
 	// Analyze the file using the new function
-	headers, columnTypes := analyzeFileTypes(file, ",", "none", analyzer)
+	headers, columnTypes, maxLengths := analyzeFileTypes(file, ",", "none", analyzer)
 
 	// Expected types for each column
 	expectedTypes := map[string]string{
@@ -114,12 +114,24 @@ func TestFileAnalysis(t *testing.T) {
 		"notes":      "varchar",
 	}
 
-	// Verify the inferred types
+	// Expected max lengths for varchar columns (from testdata/sample.csv)
+	expectedMaxLengths := map[string]int{
+		"name":  14, // "Charlie Wilson"
+		"notes": 16, // "Regular employee" or "Senior developer"
+	}
+
+	// Verify the inferred types and max lengths
 	for i, header := range headers {
 		expected := expectedTypes[header]
 		got := analyzer.GetTypes()[columnTypes[i]].Name
 		if got != expected {
 			t.Errorf("Column %s: got type %s, want %s", header, got, expected)
+		}
+		if got == "varchar" {
+			expectedLen := expectedMaxLengths[header]
+			if maxLengths[i] != expectedLen {
+				t.Errorf("Column %s: got varchar(%d), want varchar(%d)", header, maxLengths[i], expectedLen)
+			}
 		}
 	}
 }
@@ -256,7 +268,7 @@ func TestQuotedFileAnalysis(t *testing.T) {
 	analyzer := &dbtypes.PostgreSQLAnalyzer{}
 
 	// Analyze the file using the new function
-	headers, columnTypes := analyzeFileTypes(file, ",", "double", analyzer)
+	headers, columnTypes, maxLengths := analyzeFileTypes(file, ",", "double", analyzer)
 
 	// Expected types for each column
 	expectedTypes := map[string]string{
@@ -270,12 +282,28 @@ func TestQuotedFileAnalysis(t *testing.T) {
 		"notes":       "varchar",
 	}
 
-	// Verify the inferred types
+	// Expected max lengths for varchar columns (from testdata/quoted_sample.csv)
+	expectedMaxLengths := map[string]int{
+		"name":        13, // "Williams, Bob"
+		"description": 16, // "Senior Developer"
+		"address":     22, // "123 Main St, Suite 100"
+		"phone":       8,  // "555-1234"
+		"email":       24, // "john.smith@example.com"
+		"notes":       16, // "Regular employee"
+	}
+
+	// Verify the inferred types and max lengths
 	for i, header := range headers {
 		expected := expectedTypes[header]
 		got := analyzer.GetTypes()[columnTypes[i]].Name
 		if got != expected {
 			t.Errorf("Column %s: got type %s, want %s", header, got, expected)
+		}
+		if got == "varchar" {
+			expectedLen := expectedMaxLengths[header]
+			if maxLengths[i] != expectedLen {
+				t.Errorf("Column %s: got varchar(%d), want varchar(%d)", header, maxLengths[i], expectedLen)
+			}
 		}
 	}
 
