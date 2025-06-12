@@ -36,7 +36,7 @@ func TestTypeInference(t *testing.T) {
 		{"numeric", "123.45", "numeric"},
 		{"timestamp", "2024-03-20 10:30:00", "timestamp"},
 		{"date", "2024-03-20", "date"},
-		{"text", "Hello, World!", "text"},
+		{"varchar", "Hello, World!", "varchar"},
 	}
 
 	for _, tt := range tests {
@@ -105,13 +105,13 @@ func TestFileAnalysis(t *testing.T) {
 	// Expected types for each column
 	expectedTypes := map[string]string{
 		"id":         "smallint",
-		"name":       "text",
+		"name":       "varchar",
 		"age":        "integer",
 		"is_active":  "boolean",
 		"salary":     "numeric",
 		"created_at": "timestamp",
 		"birth_date": "date",
-		"notes":      "text",
+		"notes":      "varchar",
 	}
 
 	// Verify the inferred types
@@ -261,13 +261,13 @@ func TestQuotedFileAnalysis(t *testing.T) {
 	// Expected types for each column
 	expectedTypes := map[string]string{
 		"id":          "smallint",
-		"name":        "text",
-		"description": "text",
-		"address":     "text",
-		"phone":       "text",
-		"email":       "text",
+		"name":        "varchar",
+		"description": "varchar",
+		"address":     "varchar",
+		"phone":       "varchar",
+		"email":       "varchar",
 		"created_at":  "timestamp",
-		"notes":       "text",
+		"notes":       "varchar",
 	}
 
 	// Verify the inferred types

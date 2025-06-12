@@ -25,7 +25,8 @@ func (p *PostgreSQLAnalyzer) GetTypes() []DataType {
 		{Name: "numeric", Priority: 5},
 		{Name: "timestamp", Priority: 6},
 		{Name: "date", Priority: 7},
-		{Name: "text", Priority: 8},
+		{Name: "varchar", Priority: 8},
+		{Name: "text", Priority: 9},
 	}
 }
 
@@ -39,6 +40,7 @@ func (p *PostgreSQLAnalyzer) GetTypeCompatibility() map[string][]string {
 		"numeric":   {"numeric", "text"},
 		"timestamp": {"timestamp", "date", "text"},
 		"date":      {"date", "text"},
+		"varchar":   {"varchar", "text"},
 		"text":      {"text"},
 	}
 }

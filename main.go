@@ -211,6 +211,10 @@ func inferType(value string, analyzer dbtypes.TypeAnalyzer) int {
 			if isDate(value) {
 				return i
 			}
+		case "varchar":
+			if isVarchar(value) {
+				return i
+			}
 		case "text":
 			return i // text is always valid
 		}
@@ -276,4 +280,8 @@ func isDate(value string) bool {
 		}
 	}
 	return false
+}
+
+func isVarchar(value string) bool {
+	return len(value) <= 64000
 }

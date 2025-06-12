@@ -7,13 +7,13 @@ func TestPostgreSQLAnalyzer_GetTypes(t *testing.T) {
 	types := analyzer.GetTypes()
 
 	// Test that we have the expected number of types
-	expectedTypes := 8
+	expectedTypes := 9
 	if len(types) != expectedTypes {
 		t.Errorf("Expected %d types, got %d", expectedTypes, len(types))
 	}
 
 	// Test that types are in the correct order
-	expectedOrder := []string{"boolean", "smallint", "integer", "bigint", "numeric", "timestamp", "date", "text"}
+	expectedOrder := []string{"boolean", "smallint", "integer", "bigint", "numeric", "timestamp", "date", "varchar", "text"}
 	for i, expected := range expectedOrder {
 		if types[i].Name != expected {
 			t.Errorf("Expected type %s at position %d, got %s", expected, i, types[i].Name)
@@ -26,7 +26,7 @@ func TestPostgreSQLAnalyzer_GetTypeCompatibility(t *testing.T) {
 	compatibility := analyzer.GetTypeCompatibility()
 
 	// Test that we have the expected number of type mappings
-	expectedMappings := 8
+	expectedMappings := 9
 	if len(compatibility) != expectedMappings {
 		t.Errorf("Expected %d type mappings, got %d", expectedMappings, len(compatibility))
 	}
@@ -38,6 +38,7 @@ func TestPostgreSQLAnalyzer_GetTypeCompatibility(t *testing.T) {
 	}{
 		{"boolean", []string{"boolean", "text"}},
 		{"smallint", []string{"smallint", "integer", "bigint", "numeric", "text"}},
+		{"varchar", []string{"varchar", "text"}},
 		{"text", []string{"text"}},
 	}
 
