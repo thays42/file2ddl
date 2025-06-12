@@ -1,0 +1,63 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Data Type Inference System
+
+The data type inference system is implemented in [main.go](mdc:main.go) and follows a hierarchical approach to determine the most specific PostgreSQL data type for each column.
+
+## Type Hierarchy
+
+The system uses a priority-based approach defined in the `postgresTypes` slice:
+
+```go
+postgresTypes = []DataType{
+    {Name: "boolean", Priority: 1},
+    {Name: "smallint", Priority: 2},
+    {Name: "integer", Priority: 3},
+    {Name: "bigint", Priority: 4},
+    {Name: "numeric", Priority: 5},
+    {Name: "timestamp", Priority: 6},
+    {Name: "date", Priority: 7},
+    {Name: "text", Priority: 8},
+}
+```
+
+## Type Compatibility
+
+The system maintains a type compatibility matrix that defines which types can be promoted to more general types:
+
+```go
+typeCompatibility = map[string][]string{
+    "boolean":   {"boolean", "text"},
+    "smallint":  {"smallint", "integer", "bigint", "numeric", "text"},
+    "integer":   {"integer", "bigint", "numeric", "text"},
+    "bigint":    {"bigint", "numeric", "text"},
+    "numeric":   {"numeric", "text"},
+    "timestamp": {"timestamp", "date", "text"},
+    "date":      {"date", "text"},
+    "text":      {"text"},
+}
+```
+
+## Type Validation Functions
+
+The system includes specific validation functions for each data type:
+
+- `isBoolean()`: Validates boolean values (true/false, t/f)
+- `isSmallInt()`: Validates 16-bit integers (-32768 to 32767)
+- `isInteger()`: Validates 32-bit integers
+- `isBigInt()`: Validates 64-bit integers
+- `isNumeric()`: Validates floating-point numbers
+- `isTimestamp()`: Validates various timestamp formats
+- `isDate()`: Validates common date formats
+
+## Inference Process
+
+1. The system starts with the most specific type (boolean) for each column
+2. For each value in a column:
+   - Tries each type in order of preference
+   - If a value doesn't match the current type, promotes to the next most general type
+   - Continues until all values in the column are processed
+3. The final type is the most specific type that can accommodate all values in the column

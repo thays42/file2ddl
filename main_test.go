@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 	"testing"
+
+	"file2ddl/dbtypes"
 )
 
 func TestMain(m *testing.M) {
@@ -11,6 +13,8 @@ func TestMain(m *testing.M) {
 }
 
 func TestTypeInference(t *testing.T) {
+	analyzer := &dbtypes.PostgreSQLAnalyzer{}
+
 	// Test cases for individual type inference functions
 	tests := []struct {
 		name     string
@@ -35,7 +39,7 @@ func TestTypeInference(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := postgresTypes[inferType(tt.value)].Name
+			got := analyzer.GetTypes()[inferType(tt.value, analyzer)].Name
 			if got != tt.expected {
 				t.Errorf("inferType(%q) = %v, want %v", tt.value, got, tt.expected)
 			}
@@ -44,6 +48,9 @@ func TestTypeInference(t *testing.T) {
 }
 
 func TestTypeCompatibility(t *testing.T) {
+	analyzer := &dbtypes.PostgreSQLAnalyzer{}
+	compatibility := analyzer.GetTypeCompatibility()
+
 	tests := []struct {
 		name     string
 		types    []string
@@ -51,12 +58,12 @@ func TestTypeCompatibility(t *testing.T) {
 	}{
 		{
 			name:     "timestamp compatibility",
-			types:    typeCompatibility["timestamp"],
+			types:    compatibility["timestamp"],
 			expected: []string{"timestamp", "date", "text"},
 		},
 		{
 			name:     "smallint compatibility",
-			types:    typeCompatibility["smallint"],
+			types:    compatibility["smallint"],
 			expected: []string{"smallint", "integer", "bigint", "numeric", "text"},
 		},
 	}
@@ -87,8 +94,11 @@ func TestFileAnalysis(t *testing.T) {
 	}
 	defer file.Close()
 
+	// Create analyzer
+	analyzer := &dbtypes.PostgreSQLAnalyzer{}
+
 	// Analyze the file using the new function
-	headers, columnTypes := analyzeFileTypes(file, ",")
+	headers, columnTypes := analyzeFileTypes(file, ",", analyzer)
 
 	// Expected types for each column
 	expectedTypes := map[string]string{
@@ -105,7 +115,7 @@ func TestFileAnalysis(t *testing.T) {
 	// Verify the inferred types
 	for i, header := range headers {
 		expected := expectedTypes[header]
-		got := postgresTypes[columnTypes[i]].Name
+		got := analyzer.GetTypes()[columnTypes[i]].Name
 		if got != expected {
 			t.Errorf("Column %s: got type %s, want %s", header, got, expected)
 		}

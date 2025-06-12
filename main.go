@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"file2ddl/dbtypes"
 )
 
 // DataType represents a PostgreSQL data type
@@ -15,32 +17,6 @@ type DataType struct {
 	Name     string
 	Priority int // Lower number means higher priority
 }
-
-var (
-	// Define PostgreSQL data types in order of preference
-	postgresTypes = []DataType{
-		{Name: "boolean", Priority: 1},
-		{Name: "smallint", Priority: 2},
-		{Name: "integer", Priority: 3},
-		{Name: "bigint", Priority: 4},
-		{Name: "numeric", Priority: 5},
-		{Name: "timestamp", Priority: 6},
-		{Name: "date", Priority: 7},
-		{Name: "text", Priority: 8},
-	}
-
-	// Type compatibility matrix - if a value is of type X, it can only be of type Y or less specific
-	typeCompatibility = map[string][]string{
-		"boolean":   {"boolean", "text"},
-		"smallint":  {"smallint", "integer", "bigint", "numeric", "text"},
-		"integer":   {"integer", "bigint", "numeric", "text"},
-		"bigint":    {"bigint", "numeric", "text"},
-		"numeric":   {"numeric", "text"},
-		"timestamp": {"timestamp", "date", "text"},
-		"date":      {"date", "text"},
-		"text":      {"text"},
-	}
-)
 
 func main() {
 	// Define command line flags
@@ -68,17 +44,19 @@ func main() {
 	}
 	defer file.Close()
 
-	headers, columnTypes := analyzeFileTypes(file, *delimiter)
+	// Create PostgreSQL analyzer
+	analyzer := &dbtypes.PostgreSQLAnalyzer{}
+	headers, columnTypes := analyzeFileTypes(file, *delimiter, analyzer)
 
 	// Print results
 	fmt.Println("Column Analysis:")
 	for i, header := range headers {
-		fmt.Printf("%s: %s\n", header, postgresTypes[columnTypes[i]].Name)
+		fmt.Printf("%s: %s\n", header, analyzer.GetTypes()[columnTypes[i]].Name)
 	}
 }
 
 // analyzeFileTypes reads the file and analyzes the types of each column
-func analyzeFileTypes(file *os.File, delimiter string) ([]string, []int) {
+func analyzeFileTypes(file *os.File, delimiter string, analyzer dbtypes.TypeAnalyzer) ([]string, []int) {
 	scanner := bufio.NewScanner(file)
 	var headers []string
 	var columnTypes []int
@@ -102,10 +80,10 @@ func analyzeFileTypes(file *os.File, delimiter string) ([]string, []int) {
 
 		// Analyze each field
 		for i, field := range fields {
-			fieldType := inferType(field)
+			fieldType := inferType(field, analyzer)
 			if fieldType > columnTypes[i] {
 				columnTypes[i] = fieldType
-				fmt.Printf("DEBUG: field %s promoted to type %s\n", headers[i], postgresTypes[fieldType].Name)
+				fmt.Printf("DEBUG: field %s promoted to type %s\n", headers[i], analyzer.GetTypes()[fieldType].Name)
 			}
 		}
 	}
@@ -113,10 +91,11 @@ func analyzeFileTypes(file *os.File, delimiter string) ([]string, []int) {
 	return headers, columnTypes
 }
 
-func inferType(value string) int {
+func inferType(value string, analyzer dbtypes.TypeAnalyzer) int {
 	// Try each type in order of preference
-	for i, pgType := range postgresTypes {
-		switch pgType.Name {
+	types := analyzer.GetTypes()
+	for i, dbType := range types {
+		switch dbType.Name {
 		case "boolean":
 			if isBoolean(value) {
 				return i
@@ -158,7 +137,7 @@ func inferType(value string) int {
 			return i // text is always valid
 		}
 	}
-	return len(postgresTypes) - 1 // Default to text
+	return len(types) - 1 // Default to text
 }
 
 func isBoolean(value string) bool {

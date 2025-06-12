@@ -1,0 +1,47 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# File2DDL Project Overview
+
+File2DDL is a command-line tool that analyzes delimited files and infers PostgreSQL data types for each column. The project is written in Go and consists of a single main package.
+
+## Main Components
+
+- [main.go](mdc:main.go): Contains the core implementation including:
+  - Command-line interface
+  - File analysis logic
+  - Data type inference
+  - Type validation functions
+
+- [main_test.go](mdc:main_test.go): Contains test cases for the implementation
+
+- [testdata/](mdc:testdata/): Directory containing test files used in unit tests
+
+## Key Features
+
+1. Analyzes delimited files (CSV, TSV, etc.)
+2. Infers PostgreSQL data types for each column
+3. Supports common data types in order of preference:
+   - boolean
+   - smallint
+   - integer
+   - bigint
+   - numeric
+   - timestamp
+   - date
+   - text (fallback type)
+4. Handles common date and timestamp formats
+5. Validates input parameters
+
+## Usage
+
+The tool is used via command line with two required parameters:
+- `-file`: Path to the input file
+- `-delim`: Single character used as field delimiter
+
+Example:
+```bash
+file2ddl -file data.csv -delim ","
+```

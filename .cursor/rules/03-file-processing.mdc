@@ -1,0 +1,62 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# File Processing System
+
+The file processing system is implemented in [main.go](mdc:main.go) and handles the analysis of delimited files.
+
+## Core Functions
+
+### Main Processing Function
+The `analyzeFileTypes` function is the main entry point for file processing:
+
+```go
+func analyzeFileTypes(file *os.File, delimiter string) ([]string, []int)
+```
+
+This function:
+1. Reads the file line by line using a buffered scanner
+2. Processes the header row to get column names
+3. Analyzes each subsequent row for type inference
+4. Returns the headers and inferred types for each column
+
+## File Processing Features
+
+### Header Handling
+- The first line is always treated as the header
+- Headers are used to name the columns in the output
+- Headers are split using the specified delimiter
+
+### Row Processing
+- Each row is split into fields using the specified delimiter
+- The number of fields is validated against the header count
+- Rows with incorrect field counts are skipped with a warning
+
+### Type Analysis
+- Each field is analyzed for its data type
+- Types are inferred using the type inference system
+- The most specific type that can accommodate all values is chosen
+
+## Error Handling
+
+The system includes several error checks:
+1. Validates required command-line parameters
+2. Ensures the delimiter is a single character
+3. Handles file opening errors
+4. Skips malformed rows with warnings
+5. Provides clear error messages for common issues
+
+## Example Usage
+
+```go
+file, err := os.Open(*filePath)
+if err != nil {
+    fmt.Printf("Error opening file: %v\n", err)
+    os.Exit(1)
+}
+defer file.Close()
+
+headers, columnTypes := analyzeFileTypes(file, *delimiter)
+```
