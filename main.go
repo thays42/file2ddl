@@ -30,14 +30,22 @@ func getAnalyzer(flavor string) (dbtypes.TypeAnalyzer, error) {
 
 func main() {
 	// Define command line flags
-	filePath := flag.String("file", "", "Path to the input file (required)")
 	delimiter := flag.String("delim", "", "Field delimiter character (required)")
 	flavor := flag.String("flavor", "postgresql", "Database flavor (default: postgresql)")
 	flag.Parse()
 
+	// Get positional arguments
+	args := flag.Args()
+	if len(args) == 0 {
+		fmt.Println("Error: File path is required as a positional argument")
+		fmt.Println("Usage: file2ddl <file> -delim <delimiter>")
+		os.Exit(1)
+	}
+	filePath := args[0]
+
 	// Validate required parameters
-	if *filePath == "" || *delimiter == "" {
-		fmt.Println("Error: Both -file and -delim parameters are required")
+	if *delimiter == "" {
+		fmt.Println("Error: -delim parameter is required")
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -55,7 +63,7 @@ func main() {
 	}
 
 	// Open the file
-	file, err := os.Open(*filePath)
+	file, err := os.Open(filePath)
 	if err != nil {
 		fmt.Printf("Error opening file: %v\n", err)
 		os.Exit(1)
