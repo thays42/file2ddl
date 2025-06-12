@@ -1,0 +1,5 @@
+id,name,age,is_active,salary,created_at,birth_date,notes
+1,John Doe,30,true,50000,2024-03-20 10:00:00,1994-01-01,Regular employee
+2,Jane Smith,25,false,45000,2024-03-20 11:00:00,1999-02-02,Senior developer
+3,Bob Johnson,35,true,60000,2024-03-20 12:00:00,1989-03-03,Invalid line with extra field,extra
+4,Alice Brown,28,false,55000,2024-03-20 13:00:00,1996-04-04,Manager 

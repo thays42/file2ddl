@@ -33,6 +33,7 @@ func main() {
 	delimiter := flag.String("delim", "", "Field delimiter character (required)")
 	flavor := flag.String("flavor", "postgresql", "Database flavor (default: postgresql)")
 	quotes := flag.String("quotes", "none", "Quote character type: none, single, or double (default: none)")
+	ncols := flag.Int("ncols", 0, "Expected number of columns (optional)")
 
 	// Parse flags after getting the file path
 	flag.Parse()
@@ -40,18 +41,24 @@ func main() {
 	// Get positional arguments first
 	if len(flag.Args()) == 0 {
 		fmt.Println("Error: File path is required as a positional argument")
-		fmt.Println("Usage: file2ddl <file> -delim <delimiter> [-quotes none|single|double]")
+		fmt.Println("Usage: file2ddl <file> -delim <delimiter> [-quotes none|single|double] [-ncols <number>]")
 		os.Exit(1)
 	}
 	filePath := flag.Args()[0]
 
 	// Debug print for CLI parsing
-	fmt.Printf("DEBUG: filePath=%q, delim=%q, quotes=%q, args=%v\n", filePath, *delimiter, *quotes, flag.Args())
+	fmt.Printf("DEBUG: filePath=%q, delim=%q, quotes=%q, ncols=%d, args=%v\n", filePath, *delimiter, *quotes, *ncols, flag.Args())
 
 	// Validate required parameters
 	if *delimiter == "" {
 		fmt.Println("Error: -delim parameter is required")
 		flag.Usage()
+		os.Exit(1)
+	}
+
+	// Validate ncols parameter if provided
+	if *ncols < 0 {
+		fmt.Println("Error: ncols must be a positive integer")
 		os.Exit(1)
 	}
 
@@ -79,7 +86,11 @@ func main() {
 	}
 	defer file.Close()
 
-	headers, columnTypes, maxLengths := analyzeFileTypes(file, delimChar, *quotes, analyzer)
+	headers, columnTypes, maxLengths, err := analyzeFileTypes(file, delimChar, *quotes, *ncols, analyzer)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
 
 	// Print results
 	fmt.Println("Column Analysis:")
@@ -139,14 +150,16 @@ func splitFields(line, delim, quotes string) []string {
 }
 
 // analyzeFileTypes reads the file and analyzes the types of each column
-func analyzeFileTypes(file *os.File, delimiter, quotes string, analyzer dbtypes.TypeAnalyzer) ([]string, []int, []int) {
+func analyzeFileTypes(file *os.File, delimiter, quotes string, expectedCols int, analyzer dbtypes.TypeAnalyzer) ([]string, []int, []int, error) {
 	scanner := bufio.NewScanner(file)
 	var headers []string
 	var columnTypes []int
 	var maxLengths []int
+	lineNum := 0
 
 	// Read headers if file is not empty
 	if scanner.Scan() {
+		lineNum++
 		headers = splitFields(scanner.Text(), delimiter, quotes)
 		columnTypes = make([]int, len(headers))
 		maxLengths = make([]int, len(headers))
@@ -154,14 +167,21 @@ func analyzeFileTypes(file *os.File, delimiter, quotes string, analyzer dbtypes.
 			columnTypes[i] = 0 // Start with the most specific type (boolean)
 			maxLengths[i] = 0
 		}
+
+		// If ncols was specified, validate header count
+		if expectedCols > 0 && len(headers) != expectedCols {
+			return nil, nil, nil, fmt.Errorf("header line has %d fields, expected %d", len(headers), expectedCols)
+		}
 	}
 
 	// Process each line
 	for scanner.Scan() {
+		lineNum++
 		fields := splitFields(scanner.Text(), delimiter, quotes)
+
+		// Validate field count
 		if len(fields) != len(headers) {
-			fmt.Printf("Warning: Line has %d fields, expected %d\n", len(fields), len(headers))
-			continue
+			return nil, nil, nil, fmt.Errorf("line %d has %d fields, expected %d", lineNum, len(fields), len(headers))
 		}
 
 		// Analyze each field
@@ -179,7 +199,11 @@ func analyzeFileTypes(file *os.File, delimiter, quotes string, analyzer dbtypes.
 		}
 	}
 
-	return headers, columnTypes, maxLengths
+	if err := scanner.Err(); err != nil {
+		return nil, nil, nil, fmt.Errorf("error reading file: %v", err)
+	}
+
+	return headers, columnTypes, maxLengths, nil
 }
 
 func inferType(value string, analyzer dbtypes.TypeAnalyzer) int {

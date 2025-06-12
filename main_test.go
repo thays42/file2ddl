@@ -99,40 +99,115 @@ func TestFileAnalysis(t *testing.T) {
 	// Create analyzer
 	analyzer := &dbtypes.PostgreSQLAnalyzer{}
 
-	// Analyze the file using the new function
-	headers, columnTypes, maxLengths := analyzeFileTypes(file, ",", "none", analyzer)
-
-	// Expected types for each column
-	expectedTypes := map[string]string{
-		"id":         "smallint",
-		"name":       "varchar",
-		"age":        "integer",
-		"is_active":  "boolean",
-		"salary":     "numeric",
-		"created_at": "timestamp",
-		"birth_date": "date",
-		"notes":      "varchar",
+	// Test cases for different ncols values
+	testCases := []struct {
+		name        string
+		ncols       int
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:    "no ncols specified",
+			ncols:   0,
+			wantErr: false,
+		},
+		{
+			name:    "correct ncols specified",
+			ncols:   8,
+			wantErr: false,
+		},
+		{
+			name:        "incorrect ncols specified",
+			ncols:       5,
+			wantErr:     true,
+			errContains: "header line has 8 fields, expected 5",
+		},
 	}
 
-	// Expected max lengths for varchar columns (from testdata/sample.csv)
-	expectedMaxLengths := map[string]int{
-		"name":  14, // "Charlie Wilson"
-		"notes": 16, // "Regular employee" or "Senior developer"
-	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Reset file position
+			file.Seek(0, 0)
 
-	// Verify the inferred types and max lengths
-	for i, header := range headers {
-		expected := expectedTypes[header]
-		got := analyzer.GetTypes()[columnTypes[i]].Name
-		if got != expected {
-			t.Errorf("Column %s: got type %s, want %s", header, got, expected)
-		}
-		if got == "varchar" {
-			expectedLen := expectedMaxLengths[header]
-			if maxLengths[i] != expectedLen {
-				t.Errorf("Column %s: got varchar(%d), want varchar(%d)", header, maxLengths[i], expectedLen)
+			// Analyze the file using the new function
+			headers, columnTypes, maxLengths, err := analyzeFileTypes(file, ",", "none", tc.ncols, analyzer)
+
+			if tc.wantErr {
+				if err == nil {
+					t.Error("analyzeFileTypes() error = nil, want error")
+					return
+				}
+				if !strings.Contains(err.Error(), tc.errContains) {
+					t.Errorf("analyzeFileTypes() error = %v, want error containing %v", err, tc.errContains)
+				}
+				return
 			}
-		}
+
+			if err != nil {
+				t.Errorf("analyzeFileTypes() error = %v, want nil", err)
+				return
+			}
+
+			// Expected types for each column
+			expectedTypes := map[string]string{
+				"id":         "smallint",
+				"name":       "varchar",
+				"age":        "integer",
+				"is_active":  "boolean",
+				"salary":     "numeric",
+				"created_at": "timestamp",
+				"birth_date": "date",
+				"notes":      "varchar",
+			}
+
+			// Expected max lengths for varchar columns (from testdata/sample.csv)
+			expectedMaxLengths := map[string]int{
+				"name":  14, // "Charlie Wilson"
+				"notes": 16, // "Regular employee" or "Senior developer"
+			}
+
+			// Verify the inferred types and max lengths
+			for i, header := range headers {
+				expected := expectedTypes[header]
+				got := analyzer.GetTypes()[columnTypes[i]].Name
+				if got != expected {
+					t.Errorf("Column %s: got type %s, want %s", header, got, expected)
+				}
+				if got == "varchar" {
+					expectedLen := expectedMaxLengths[header]
+					if maxLengths[i] != expectedLen {
+						t.Errorf("Column %s: got varchar(%d), want varchar(%d)", header, maxLengths[i], expectedLen)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestInvalidFieldCount(t *testing.T) {
+	// Create a temporary file with invalid data
+	tmpFile := "testdata/invalid_sample.csv"
+
+	// Test the file analysis
+	file, err := os.Open(tmpFile)
+	if err != nil {
+		t.Fatalf("Failed to open test file: %v", err)
+	}
+	defer file.Close()
+
+	// Create analyzer
+	analyzer := &dbtypes.PostgreSQLAnalyzer{}
+
+	// Analyze the file
+	_, _, _, err = analyzeFileTypes(file, ",", "none", 0, analyzer)
+	if err == nil {
+		t.Error("analyzeFileTypes() error = nil, want error")
+		return
+	}
+
+	// Verify error message contains line number and field count
+	if !strings.Contains(err.Error(), "line") || !strings.Contains(err.Error(), "fields") {
+		t.Errorf("analyzeFileTypes() error = %v, want error containing line number and field count", err)
 	}
 }
 
@@ -268,7 +343,10 @@ func TestQuotedFileAnalysis(t *testing.T) {
 	analyzer := &dbtypes.PostgreSQLAnalyzer{}
 
 	// Analyze the file using the new function
-	headers, columnTypes, maxLengths := analyzeFileTypes(file, ",", "double", analyzer)
+	headers, columnTypes, maxLengths, err := analyzeFileTypes(file, ",", "double", 0, analyzer)
+	if err != nil {
+		t.Fatalf("Failed to analyze file: %v", err)
+	}
 
 	// Expected types for each column
 	expectedTypes := map[string]string{
