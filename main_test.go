@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"file2ddl/dbtypes"
@@ -119,5 +120,54 @@ func TestFileAnalysis(t *testing.T) {
 		if got != expected {
 			t.Errorf("Column %s: got type %s, want %s", header, got, expected)
 		}
+	}
+}
+
+func TestGetAnalyzer(t *testing.T) {
+	tests := []struct {
+		name        string
+		flavor      string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:    "valid postgresql flavor",
+			flavor:  "postgresql",
+			wantErr: false,
+		},
+		{
+			name:    "valid postgresql flavor case insensitive",
+			flavor:  "PostgreSQL",
+			wantErr: false,
+		},
+		{
+			name:        "invalid flavor",
+			flavor:      "mysql",
+			wantErr:     true,
+			errContains: "unsupported database flavor",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			analyzer, err := getAnalyzer(tt.flavor)
+			if tt.wantErr {
+				if err == nil {
+					t.Error("getAnalyzer() error = nil, want error")
+					return
+				}
+				if !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("getAnalyzer() error = %v, want error containing %v", err, tt.errContains)
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("getAnalyzer() error = %v, want nil", err)
+				return
+			}
+			if analyzer == nil {
+				t.Error("getAnalyzer() analyzer = nil, want non-nil")
+			}
+		})
 	}
 }

@@ -18,10 +18,21 @@ type DataType struct {
 	Priority int // Lower number means higher priority
 }
 
+// getAnalyzer returns the appropriate TypeAnalyzer based on the database flavor
+func getAnalyzer(flavor string) (dbtypes.TypeAnalyzer, error) {
+	switch strings.ToLower(flavor) {
+	case "postgresql":
+		return &dbtypes.PostgreSQLAnalyzer{}, nil
+	default:
+		return nil, fmt.Errorf("unsupported database flavor: %s. Supported flavors: postgresql", flavor)
+	}
+}
+
 func main() {
 	// Define command line flags
 	filePath := flag.String("file", "", "Path to the input file (required)")
 	delimiter := flag.String("delim", "", "Field delimiter character (required)")
+	flavor := flag.String("flavor", "postgresql", "Database flavor (default: postgresql)")
 	flag.Parse()
 
 	// Validate required parameters
@@ -36,6 +47,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Get the appropriate analyzer
+	analyzer, err := getAnalyzer(*flavor)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Open the file
 	file, err := os.Open(*filePath)
 	if err != nil {
@@ -44,8 +62,6 @@ func main() {
 	}
 	defer file.Close()
 
-	// Create PostgreSQL analyzer
-	analyzer := &dbtypes.PostgreSQLAnalyzer{}
 	headers, columnTypes := analyzeFileTypes(file, *delimiter, analyzer)
 
 	// Print results
