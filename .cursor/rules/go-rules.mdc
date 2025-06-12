@@ -1,0 +1,8 @@
+---
+description: 
+globs: *.go
+alwaysApply: false
+---
+- Use go test to ensure all tests pass.
+- Use go vet to ensure code has no issues.
+- Use go fmt to ensure code is formatted. Format code at the very end, once it passes all tests and has no issues.

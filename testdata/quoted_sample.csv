@@ -1,0 +1,6 @@
+id,name,description,address,phone,email,created_at,notes
+1,"Smith, John","Senior Developer","123 Main St, Suite 100","555-1234","john.smith@example.com","2024-03-20 10:30:00","Regular employee"
+2,"Doe, Jane","Project Manager","456 Oak Ave, Apt 5B","555-5678","jane.doe@example.com","2024-03-20 11:15:00","Team lead"
+3,Johnson,"QA Engineer","789 Pine Rd","555-9012","johnson@example.com","2024-03-20 12:00:00","Contractor"
+4,"Williams, Bob","DevOps Engineer","321 Cedar Ln, Unit 7","555-3456","bob.williams@example.com","2024-03-20 13:45:00","On-call support"
+5,"Brown, Sarah","UX Designer","654 Maple Dr","555-7890","sarah.brown@example.com","2024-03-20 14:30:00","Remote worker" 

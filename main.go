@@ -32,16 +32,21 @@ func main() {
 	// Define command line flags
 	delimiter := flag.String("delim", "", "Field delimiter character (required)")
 	flavor := flag.String("flavor", "postgresql", "Database flavor (default: postgresql)")
+	quotes := flag.String("quotes", "none", "Quote character type: none, single, or double (default: none)")
+
+	// Parse flags after getting the file path
 	flag.Parse()
 
-	// Get positional arguments
-	args := flag.Args()
-	if len(args) == 0 {
+	// Get positional arguments first
+	if len(flag.Args()) == 0 {
 		fmt.Println("Error: File path is required as a positional argument")
-		fmt.Println("Usage: file2ddl <file> -delim <delimiter>")
+		fmt.Println("Usage: file2ddl <file> -delim <delimiter> [-quotes none|single|double]")
 		os.Exit(1)
 	}
-	filePath := args[0]
+	filePath := flag.Args()[0]
+
+	// Debug print for CLI parsing
+	fmt.Printf("DEBUG: filePath=%q, delim=%q, quotes=%q, args=%v\n", filePath, *delimiter, *quotes, flag.Args())
 
 	// Validate required parameters
 	if *delimiter == "" {
@@ -50,8 +55,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if len(*delimiter) != 1 {
-		fmt.Println("Error: Delimiter must be a single character")
+	// Extract the first character of the delimiter string
+	delimChar := string((*delimiter)[0])
+
+	// Validate quotes parameter
+	if *quotes != "none" && *quotes != "single" && *quotes != "double" {
+		fmt.Println("Error: quotes must be one of: none, single, double")
 		os.Exit(1)
 	}
 
@@ -70,7 +79,7 @@ func main() {
 	}
 	defer file.Close()
 
-	headers, columnTypes := analyzeFileTypes(file, *delimiter, analyzer)
+	headers, columnTypes := analyzeFileTypes(file, delimChar, *quotes, analyzer)
 
 	// Print results
 	fmt.Println("Column Analysis:")
@@ -79,15 +88,60 @@ func main() {
 	}
 }
 
+// splitFields splits a line into fields, handling quoted fields
+func splitFields(line, delim, quotes string) []string {
+	if quotes == "none" {
+		return strings.Split(line, delim)
+	}
+
+	var fields []string
+	var current strings.Builder
+	var inQuote bool
+	var quoteChar rune
+
+	if quotes == "double" {
+		quoteChar = '"'
+	} else {
+		quoteChar = '\''
+	}
+
+	for i := 0; i < len(line); i++ {
+		r := rune(line[i])
+
+		if r == quoteChar {
+			if !inQuote {
+				// Start of quoted field
+				inQuote = true
+			} else {
+				// End of quoted field
+				inQuote = false
+			}
+			continue
+		}
+
+		if r == rune(delim[0]) && !inQuote {
+			fields = append(fields, current.String())
+			current.Reset()
+			continue
+		}
+
+		current.WriteRune(r)
+	}
+
+	// Add the last field
+	fields = append(fields, current.String())
+	return fields
+}
+
 // analyzeFileTypes reads the file and analyzes the types of each column
-func analyzeFileTypes(file *os.File, delimiter string, analyzer dbtypes.TypeAnalyzer) ([]string, []int) {
+func analyzeFileTypes(file *os.File, delimiter, quotes string, analyzer dbtypes.TypeAnalyzer) ([]string, []int) {
 	scanner := bufio.NewScanner(file)
 	var headers []string
 	var columnTypes []int
 
 	// Read headers if file is not empty
 	if scanner.Scan() {
-		headers = strings.Split(scanner.Text(), delimiter)
+		headers = splitFields(scanner.Text(), delimiter, quotes)
 		columnTypes = make([]int, len(headers))
 		for i := range columnTypes {
 			columnTypes[i] = 0 // Start with the most specific type (boolean)
@@ -96,7 +150,7 @@ func analyzeFileTypes(file *os.File, delimiter string, analyzer dbtypes.TypeAnal
 
 	// Process each line
 	for scanner.Scan() {
-		fields := strings.Split(scanner.Text(), delimiter)
+		fields := splitFields(scanner.Text(), delimiter, quotes)
 		if len(fields) != len(headers) {
 			fmt.Printf("Warning: Line has %d fields, expected %d\n", len(fields), len(headers))
 			continue

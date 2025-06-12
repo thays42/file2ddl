@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"os"
 	"strings"
 	"testing"
@@ -99,7 +100,7 @@ func TestFileAnalysis(t *testing.T) {
 	analyzer := &dbtypes.PostgreSQLAnalyzer{}
 
 	// Analyze the file using the new function
-	headers, columnTypes := analyzeFileTypes(file, ",", analyzer)
+	headers, columnTypes := analyzeFileTypes(file, ",", "none", analyzer)
 
 	// Expected types for each column
 	expectedTypes := map[string]string{
@@ -169,5 +170,136 @@ func TestGetAnalyzer(t *testing.T) {
 				t.Error("getAnalyzer() analyzer = nil, want non-nil")
 			}
 		})
+	}
+}
+
+func TestQuotedFieldHandling(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		delim    string
+		quotes   string
+		expected []string
+	}{
+		{
+			name:     "unquoted fields",
+			input:    "a,b,c",
+			delim:    ",",
+			quotes:   "none",
+			expected: []string{"a", "b", "c"},
+		},
+		{
+			name:     "double quoted fields",
+			input:    `"a","b","c"`,
+			delim:    ",",
+			quotes:   "double",
+			expected: []string{"a", "b", "c"},
+		},
+		{
+			name:     "single quoted fields",
+			input:    "'a','b','c'",
+			delim:    ",",
+			quotes:   "single",
+			expected: []string{"a", "b", "c"},
+		},
+		{
+			name:     "mixed quoted and unquoted",
+			input:    `"a",b,"c"`,
+			delim:    ",",
+			quotes:   "double",
+			expected: []string{"a", "b", "c"},
+		},
+		{
+			name:     "quoted fields with delimiter inside",
+			input:    `"a,b","c,d"`,
+			delim:    ",",
+			quotes:   "double",
+			expected: []string{"a,b", "c,d"},
+		},
+		{
+			name:     "quoted fields with spaces",
+			input:    `"a b","c d"`,
+			delim:    ",",
+			quotes:   "double",
+			expected: []string{"a b", "c d"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fields := splitFields(tt.input, tt.delim, tt.quotes)
+			if len(fields) != len(tt.expected) {
+				t.Errorf("got %d fields, want %d", len(fields), len(tt.expected))
+				return
+			}
+			for i, field := range fields {
+				if field != tt.expected[i] {
+					t.Errorf("field[%d] = %q, want %q", i, field, tt.expected[i])
+				}
+			}
+		})
+	}
+}
+
+func TestQuotedFileAnalysis(t *testing.T) {
+	// Create a temporary file with test data
+	tmpFile := "testdata/quoted_sample.csv"
+
+	// Test the file analysis
+	file, err := os.Open(tmpFile)
+	if err != nil {
+		t.Fatalf("Failed to open test file: %v", err)
+	}
+	defer file.Close()
+
+	// Create analyzer
+	analyzer := &dbtypes.PostgreSQLAnalyzer{}
+
+	// Analyze the file using the new function
+	headers, columnTypes := analyzeFileTypes(file, ",", "double", analyzer)
+
+	// Expected types for each column
+	expectedTypes := map[string]string{
+		"id":          "smallint",
+		"name":        "text",
+		"description": "text",
+		"address":     "text",
+		"phone":       "text",
+		"email":       "text",
+		"created_at":  "timestamp",
+		"notes":       "text",
+	}
+
+	// Verify the inferred types
+	for i, header := range headers {
+		expected := expectedTypes[header]
+		got := analyzer.GetTypes()[columnTypes[i]].Name
+		if got != expected {
+			t.Errorf("Column %s: got type %s, want %s", header, got, expected)
+		}
+	}
+
+	// Verify that quoted fields with commas are handled correctly
+	scanner := bufio.NewScanner(file)
+	if scanner.Scan() {
+		headers := splitFields(scanner.Text(), ",", "double")
+		if len(headers) != 8 {
+			t.Errorf("Expected 8 headers, got %d", len(headers))
+		}
+	}
+
+	// Read first data line
+	if scanner.Scan() {
+		fields := splitFields(scanner.Text(), ",", "double")
+		if len(fields) != 8 {
+			t.Errorf("Expected 8 fields, got %d", len(fields))
+		}
+		// Verify that fields with commas are preserved
+		if fields[1] != "Smith, John" {
+			t.Errorf("Expected 'Smith, John', got %q", fields[1])
+		}
+		if fields[3] != "123 Main St, Suite 100" {
+			t.Errorf("Expected '123 Main St, Suite 100', got %q", fields[3])
+		}
 	}
 }
