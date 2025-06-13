@@ -47,7 +47,7 @@ func main() {
 	// Get positional arguments first
 	if len(flag.Args()) == 0 {
 		fmt.Println("Error: File path is required as a positional argument")
-		fmt.Println("Usage: file2ddl <file> -delim <delimiter> [-quotes none|single|double] [-ncols <number>] [-v]")
+		fmt.Println("Usage: file2ddl -delim <delimiter> [-quotes none|single|double] [-ncols <number>] [-v] <file>")
 		os.Exit(1)
 	}
 	filePath := flag.Args()[0]

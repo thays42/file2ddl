@@ -22,7 +22,7 @@ go build -o file2ddl main.go
 ## Usage
 
 ```bash
-file2ddl <file> -delim <delimiter> [-flavor postgresql] [-quotes none|single|double] [-ncols <number>] [-v]
+file2ddl -delim <delimiter> [-flavor postgresql] [-quotes none|single|double] [-ncols <number>] [-v] <file>
 ```
 
 ### Parameters
@@ -38,19 +38,19 @@ file2ddl <file> -delim <delimiter> [-flavor postgresql] [-quotes none|single|dou
 
 ```bash
 # Basic CSV analysis
-file2ddl data.csv -delim ","
+file2ddl -delim "," data.csv
 
 # CSV with double quotes
-file2ddl data.csv -delim "," -quotes double
+file2ddl -delim "," -quotes double data.csv
 
 # Tab-separated file with column count validation
-file2ddl data.tsv -delim $'\t' -ncols 8
+file2ddl -delim $'\t' -ncols 8 data.tsv
 
 # Pipe-delimited file
-file2ddl data.txt -delim "|"
+file2ddl -delim "|" data.txt
 
 # Enable verbose mode to see DEBUG output
-file2ddl data.csv -delim "," -v
+file2ddl -delim "," -v data.csv
 ```
 
 ## Output
