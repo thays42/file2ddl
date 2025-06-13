@@ -12,6 +12,8 @@ import (
 	"file2ddl/dbtypes"
 )
 
+var verbose bool
+
 // DataType represents a PostgreSQL data type
 type DataType struct {
 	Name     string
@@ -34,20 +36,26 @@ func main() {
 	flavor := flag.String("flavor", "postgresql", "Database flavor (default: postgresql)")
 	quotes := flag.String("quotes", "none", "Quote character type: none, single, or double (default: none)")
 	ncols := flag.Int("ncols", 0, "Expected number of columns (optional)")
+	verboseFlag := flag.Bool("v", false, "Enable verbose mode with DEBUG output")
 
 	// Parse flags after getting the file path
 	flag.Parse()
 
+	// Set global verbose flag
+	verbose = *verboseFlag
+
 	// Get positional arguments first
 	if len(flag.Args()) == 0 {
 		fmt.Println("Error: File path is required as a positional argument")
-		fmt.Println("Usage: file2ddl <file> -delim <delimiter> [-quotes none|single|double] [-ncols <number>]")
+		fmt.Println("Usage: file2ddl <file> -delim <delimiter> [-quotes none|single|double] [-ncols <number>] [-v]")
 		os.Exit(1)
 	}
 	filePath := flag.Args()[0]
 
 	// Debug print for CLI parsing
-	fmt.Printf("DEBUG: filePath=%q, delim=%q, quotes=%q, ncols=%d, args=%v\n", filePath, *delimiter, *quotes, *ncols, flag.Args())
+	if verbose {
+		fmt.Printf("DEBUG: filePath=%q, delim=%q, quotes=%q, ncols=%d, args=%v\n", filePath, *delimiter, *quotes, *ncols, flag.Args())
+	}
 
 	// Validate required parameters
 	if *delimiter == "" {
@@ -189,7 +197,9 @@ func analyzeFileTypes(file *os.File, delimiter, quotes string, expectedCols int,
 			fieldType := inferType(field, analyzer)
 			if fieldType > columnTypes[i] {
 				columnTypes[i] = fieldType
-				fmt.Printf("DEBUG: field %s promoted to type %s\n", headers[i], analyzer.GetTypes()[fieldType].Name)
+				if verbose {
+					fmt.Printf("DEBUG: field %s promoted to type %s\n", headers[i], analyzer.GetTypes()[fieldType].Name)
+				}
 			}
 			if analyzer.GetTypes()[fieldType].Name == "varchar" {
 				if len(field) > maxLengths[i] {

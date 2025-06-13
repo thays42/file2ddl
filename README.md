@@ -22,7 +22,7 @@ go build -o file2ddl main.go
 ## Usage
 
 ```bash
-file2ddl <file> -delim <delimiter> [-flavor postgresql] [-quotes none|single|double] [-ncols <number>]
+file2ddl <file> -delim <delimiter> [-flavor postgresql] [-quotes none|single|double] [-ncols <number>] [-v]
 ```
 
 ### Parameters
@@ -32,6 +32,7 @@ file2ddl <file> -delim <delimiter> [-flavor postgresql] [-quotes none|single|dou
 - `-flavor`: Database flavor (default: postgresql) - currently only PostgreSQL is supported
 - `-quotes`: Quote character handling: none, single, or double (default: none)
 - `-ncols`: Expected number of columns for validation (optional)
+- `-v`: Enable verbose mode with DEBUG output (optional)
 
 ### Examples
 
@@ -47,6 +48,9 @@ file2ddl data.tsv -delim $'\t' -ncols 8
 
 # Pipe-delimited file
 file2ddl data.txt -delim "|"
+
+# Enable verbose mode to see DEBUG output
+file2ddl data.csv -delim "," -v
 ```
 
 ## Output
@@ -54,6 +58,29 @@ file2ddl data.txt -delim "|"
 The tool analyzes each column and outputs the inferred PostgreSQL data type:
 
 ```
+Column Analysis:
+id: smallint
+name: varchar(14)
+age: integer
+is_active: boolean
+salary: numeric
+created_at: timestamp
+birth_date: date
+notes: varchar(16)
+```
+
+### Verbose Mode
+
+When the `-v` flag is used, the tool outputs additional DEBUG information showing:
+
+- Command-line parameter parsing details
+- Type promotion events when columns are upgraded to more general types
+
+Example verbose output:
+```
+DEBUG: filePath="data.csv", delim=",", quotes="none", ncols=0, args=["data.csv"]
+DEBUG: field name promoted to type varchar
+DEBUG: field salary promoted to type numeric
 Column Analysis:
 id: smallint
 name: varchar(14)
